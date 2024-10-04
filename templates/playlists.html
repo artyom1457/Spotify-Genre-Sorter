@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Your Playlists</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/playlists.css') }}"
+    />
+  </head>
+  <body>
+    <div class="header">
+      <a href="{{ url_for('main.home') }}" class="btn go-back-btn">Go back</a>
+    </div>
+    <div class="content-container">
+      <h1 class="title">Your Spotify Playlists</h1>
+      <ul id="playlist-list" class="playlist-list">
+        <!-- Playlists will be dynamically inserted here -->
+      </ul>
+      <button id="load-more-btn" class="btn">Load More</button>
+    </div>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+  </body>
+</html>

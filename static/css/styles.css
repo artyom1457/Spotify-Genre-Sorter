@@ -1,0 +1,52 @@
+:root {
+  --dark-green: #023020;
+  --gold: #d4af37;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  height: 100vh;
+  background-color: var(--dark-green);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-family: Arial, sans-serif;
+}
+
+.content-container {
+  text-align: center;
+}
+
+.title {
+  color: var(--gold);
+  font-size: 36px;
+  margin-bottom: 40px; /* Padding between title and buttons */
+}
+
+.button-container {
+  text-align: center;
+  position: relative; /* For tooltip positioning */
+}
+
+.btn {
+  display: block;
+  width: 200px;
+  padding: 15px;
+  margin: 10px auto;
+  border: 2px solid var(--gold);
+  border-radius: 30px;
+  background-color: transparent;
+  color: var(--gold);
+  font-size: 18px;
+  font-weight: bold;
+  text-align: center;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 0.3s, color 0.3s;
+}
+
+.btn:hover {
+  background-color: var(--gold);
+  color: var(--dark-green);
+}

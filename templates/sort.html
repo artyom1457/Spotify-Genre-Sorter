@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sort Page</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/sort.css') }}"
+    />
+    <script src="{{ url_for('static', filename='js/sort.js') }}" defer></script>
+  </head>
+  <body>
+    <a href="{{ url_for('main.home') }}" class="go-back-button">Go Back</a>
+
+    <div id="loading-screen" class="loading-screen">
+      <div class="loader">Loading...</div>
+    </div>
+
+    <div id="content-container" class="content-container" style="display: none">
+      <h1 class="title">Your Saved Songs Count</h1>
+      <div class="count-box">
+        <p id="song-count"></p>
+      </div>
+      <button id="sort-button" class="sort-button">Sort Songs</button>
+
+      <div id="progress-container" style="display: none">
+        <label for="progress-bar">Sorting Progress:</label>
+        <progress id="progress-bar" value="0" max="100"></progress>
+      </div>
+
+      <!-- New elements for genre selection -->
+      <div id="genre-container" class="genre-container" style="display: none">
+        <h2>Select Genres</h2>
+        <div class="buttons-panel">
+          <div class="label-container">
+            <label for="min-count">Minimum Song Count:</label>
+            <input type="number" id="min-count" min="1" value="1" />
+          </div>
+          <div class="label-container">
+            <label for="song-search">Search:</label>
+            <input type="search" id="song-search" name="song-search" />
+          </div>
+          <button id="create-playlists" class="create-playlists-button">
+            Create Playlists
+          </button>
+        </div>
+        <div id="genre-list" class="genre-list"></div>
+      </div>
+    </div>
+  </body>
+</html>
