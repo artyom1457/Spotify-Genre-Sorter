@@ -78,19 +78,15 @@ document.addEventListener("DOMContentLoaded", function () {
 
           try {
             // Fetch the genres after sorting is complete
-            const genresResponse = await fetch(`/get_genres/${fileId}`);
-            if (!genresResponse.ok) {
-              throw new Error(
-                `Failed to fetch genres: ${genresResponse.statusText}`
-              );
+            const response = await fetch(`/get_genres/${fileId}`);
+            if (!response.ok) {
+              throw new Error(`Failed to fetch genres: ${response.statusText}`);
             }
 
-            const genresData = await genresResponse.json();
-            fileId = genresResponse.file_id;
-            genreData = JSON.parse(genresResponse.grouped_tracks);
+            const data = await response.json();
+            fileId = data.file_id;
+            genreData = JSON.parse(data.grouped_tracks);
             populateGenres();
-
-            console.log("Genres:", genresData);
           } catch (error) {
             console.error("Error fetching genres:", error);
           }

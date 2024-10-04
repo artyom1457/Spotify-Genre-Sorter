@@ -51,6 +51,8 @@ main_bp = Blueprint('main', __name__)
 # Global state for progress tracking per file ID
 progress_data = defaultdict(lambda: {'status': 'Not Started', 'percentage': 0})
 
+DEVELOP = True
+
 
 def load_tracks_from_file(file_path):
     with open(file_path, 'r') as f:
@@ -88,14 +90,18 @@ def get_all_saved_tracks():
     # Initialize an empty list to hold all saved tracks
     all_tracks = []
     
+    if not DEVELOP:
     # Fetch the first page of saved tracks
-    results = sp.current_user_saved_tracks(limit=50)  # Adjust limit if needed
-    all_tracks.extend(results['items'])
-
-    # Continue fetching the remaining pages
-    while results['next']:
-        results = sp.next(results)
+        results = sp.current_user_saved_tracks(limit=50)  # Adjust limit if needed
         all_tracks.extend(results['items'])
+
+        # Continue fetching the remaining pages
+        while results['next']:
+            results = sp.next(results)
+            all_tracks.extend(results['items'])
+    
+    else:
+        all_tracks = load_tracks_from_file(r"files\saved_songs.json")
 
     return all_tracks
 
@@ -151,15 +157,17 @@ def start_sorting():
     def get_genres(file_id,artists_songs):
         global progress_data
 
-        for i, (index, row) in enumerate(artists_songs.iterrows()):
-            artists_songs.at[index, 'genres'] = get_genre(row['artist_id'])
-            progress_data[file_id]['percentage'] = int((i + 1) / size * 100)
-            # yield f"data: {json.dumps({'progress': progress})}\n\n"
-
+        if not DEVELOP:
+            for i, (index, row) in enumerate(artists_songs.iterrows()):
+                artists_songs.at[index, 'genres'] = get_genre(row['artist_id'])
+                progress_data[file_id]['percentage'] = int((i + 1) / size * 100)
+                # yield f"data: {json.dumps({'progress': progress})}\n\n"
+        else:
+            artists_songs = load_tracks_from_file(r"files\temp.json")
         
         file_path = os.path.join(tempfile.gettempdir(), f"{file_id}.json")
         with open(file_path, 'w') as f:
-            json.dump(tracks, f)
+            json.dump(artists_songs, f)
 
         progress_data[file_id]['status'] = 'Completed'
 
