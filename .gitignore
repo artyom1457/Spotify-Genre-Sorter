@@ -368,6 +368,7 @@ pyrightconfig.json
 
 
 *.ipynb
+files/
 
 
 # End of https://www.toptal.com/developers/gitignore/api/visualstudiocode,python,flask,pycharm+all
