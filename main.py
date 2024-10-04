@@ -2,7 +2,7 @@ import threading
 import time
 from dotenv import load_dotenv
 import os
-from flask import Blueprint, Flask, redirect, request, session, url_for, render_template, jsonify, stream_with_context, Response
+from flask import Blueprint, Flask, copy_current_request_context, redirect, request, session, url_for, render_template, jsonify, stream_with_context, Response
 import numpy as np
 from spotipy import Spotify
 from spotipy.oauth2 import SpotifyOAuth
@@ -26,6 +26,8 @@ client_id = os.getenv('SPOTIPY_CLIENT_ID', '')
 client_secret = os.getenv('SPOTIPY_CLIENT_SECRET', '')
 redirect_uri = os.getenv('SPOTIPY_REDIRECT_URI', '')
 scope = 'playlist-modify-private,playlist-read-private,user-library-read'
+
+temp_files = []
 
 if not (client_id and client_secret and redirect_uri):
     print("the client id and client secret weren't specified")
@@ -78,6 +80,8 @@ def save_tracks_to_file(tracks):
     with open(file_path, 'w') as f:
         json.dump(tracks, f)
     
+    temp_files.append(file_path)
+
     return file_path
 
 def get_all_saved_tracks():
@@ -140,7 +144,10 @@ def start_sorting():
 
     size = len(artists_songs.index)
     artists_songs['genres'] = [[] for _ in range(len(artists_songs))]
+    progress_data[file_id]
 
+
+    @copy_current_request_context
     def get_genres(file_id,artists_songs):
         global progress_data
 
@@ -152,11 +159,13 @@ def start_sorting():
         
         file_path = os.path.join(tempfile.gettempdir(), f"{file_id}.json")
         with open(file_path, 'w') as f:
-                json.dump(tracks, f)
+            json.dump(tracks, f)
 
         progress_data[file_id]['status'] = 'Completed'
 
     # Run sorting in a separate thread
+    get_genres_t = threading.Thread(target=get_genres, args = (file_id,artists_songs,))
+    get_genres_t.start()
 
     return jsonify({'message': 'Sorting started'}), 200
 
@@ -167,28 +176,26 @@ def events(file_id):
     
     def generate():
         while progress_data[file_id]['status'] != 'Completed':
-            yield f"data: {str(progress_data[file_id])}\n\n"
+            yield f"data: {json.dumps(progress_data[file_id])}\n\n"
             time.sleep(1)
         
         # Send final message to notify completion
-        yield f"data: {str(progress_data[file_id])}\n\n"
+        yield f"data: {json.dumps(progress_data[file_id])}\n\n"
 
-        # Optional: Clean up progress data if needed
         progress_data.pop(file_id, None)
 
     return Response(generate(), content_type='text/event-stream')
 
 
-@main_bp.route('/get_genres')
-def get_genres():
-    file_id = request.args.get('file_id')
+@main_bp.route('/get_genres/<file_id>')
+def get_genres(file_id):
     file_path = os.path.join(tempfile.gettempdir(), f"{file_id}.json")
     
     if not os.path.exists(file_path):
         return jsonify({"error": "File not found"}), 404
 
     # Load tracks from file
-    artists_songs = load_tracks_from_file(file_path)
+    artists_songs = pd.DataFrame(json.loads(load_tracks_from_file(file_path)))
 
     # label each track with its corresponding genre
     labeled_songs = artists_songs.explode('song_ids').groupby('song_ids')['genres'].apply(lambda x: list(set(genre for sublist in x for genre in sublist))).reset_index()
@@ -200,61 +207,11 @@ def get_genres():
 
     # Clean up by deleting the file after sorting
     os.remove(file_path)
+    temp_files.remove(file_path)
 
     file_path = os.path.splitext(os.path.basename(save_tracks_to_file(grouped_tracks.to_json())))[0]
 
     return jsonify({'grouped_tracks': grouped_tracks[['genres',"count"]].to_json(), 'file_id': file_path})
-
-
-
-# @main_bp.route('/sort_tracks', methods=['POST'])
-# def sort_tracks_route():
-#     file_id = request.json.get('file_id')
-#     file_path = os.path.join(tempfile.gettempdir(), f"{file_id}.json")
-    
-#     if not os.path.exists(file_path):
-#         return jsonify({"error": "File not found"}), 404
-
-#     # Load tracks from file
-#     tracks = load_tracks_from_file(file_path)
-#     artists_songs = group_by_artists(tracks)
-#     artists_songs['genres'] = [[] for _ in range(len(artists_songs))]
-#     size = len(artists_songs.index)
-    
-#     def generate_progress():
-#         i = 0
-#         for index, row in artists_songs.iterrows():
-#             artists_songs.at[index, 'genres'] = get_genre(row['artist_id'])
-#             progress = int((i + 1) / size * 100)
-#             yield f"data: {json.dumps({'progress': progress})}\n\n"
-#             i += 1
-
-#         # After sorting is complete, label each track with its corresponding genre
-#         labeled_songs = artists_songs.explode('song_ids').groupby('song_ids')['genres'] \
-#             .apply(lambda x: list(set(genre for sublist in x for genre in sublist))) \
-#             .reset_index()
-
-#         # Group tracks by genre
-#         grouped_tracks = labeled_songs.explode('genres').groupby('genres')['song_ids'].apply(list).reset_index()
-
-#         # Count the number of tracks for each genre
-#         grouped_tracks["count"] = grouped_tracks.agg({"song_ids": lambda x: len(x)})
-
-#         # Save the sorted data to a file and get the new file ID
-#         save_file_path = os.path.splitext(os.path.basename(save_tracks_to_file(grouped_tracks.to_json())))[0]
-
-#         # Send the final sorted data and file ID once progress is 100%
-#         progress_data = {
-#             'progress': 100,
-#             'grouped_tracks': grouped_tracks[['genres', 'count']].to_json(),
-#             'file_id': save_file_path
-#         }
-#         yield f"data: {json.dumps(progress_data)}\n\n"
-
-#         # Clean up by deleting the original file
-#         os.remove(file_path)
-
-#     return Response(stream_with_context(generate_progress()), content_type='text/event-stream')
 
 
 @main_bp.route("/create_playlists", methods=['POST'])
@@ -368,6 +325,23 @@ def logout():
 # Register the Blueprint
 app.register_blueprint(main_bp)
 
+
+def delete_temp_files():
+    global temp_files
+
+    for file in temp_files:
+        try:
+            os.remove(file)
+        except Exception as e:
+            print(f"{file} couldn't be deleted")
+            print(e)
+
+
+
 # Main entry point
 if __name__ == '__main__':
-    app.run(debug=True)
+    try:
+        app.run(debug=True)
+    finally:
+        # delete all temp files created when program ends
+        delete_temp_files()
